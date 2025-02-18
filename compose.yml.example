@@ -1,0 +1,11 @@
+services:
+  scryfall:
+    image: scryfall
+    build: .
+    container_name: scryfall
+    environment:
+      - BOT_TOKEN=<your_bot_token> # The bot token from Discord
+      - CRON_SCHEDULE=03 0 * * * # Run the bot every day at 12:03 AM for example. Use https://crontab.guru/ to generate your own schedule.
+      - CHANNEL_ID=782393564211733791 # The channel ID where the bot will post the daily card
+      - TZ=America/New_York # Set the timezone
+    tty: true
