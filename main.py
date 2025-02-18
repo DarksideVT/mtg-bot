@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import discord
 import requests
@@ -24,12 +25,19 @@ async def on_ready():
     if cron_schedule and channel_id.isdigit():
         try:
             channel_id = int(channel_id)
-            scheduler.add_job(
+            channel = bot.get_channel(channel_id)
+            job = scheduler.add_job(
                 send_scheduled_card,
                 CronTrigger.from_crontab(cron_schedule),
                 args=[channel_id],
             )
-            print(f"Scheduled card posting: {cron_schedule} -> Channel {channel_id}")
+            next_run_time = job.next_run_time
+            if next_run_time:
+                time_until_next_run = next_run_time - datetime.now(next_run_time.tzinfo)
+                formatted_time_until_next_run = str(time_until_next_run).split(".")[0]
+                print(
+                    f"Next scheduled card posting set to {next_run_time} in {formatted_time_until_next_run} hours.\nConfigured posting channel {channel.name} ({channel.id})."
+                )
         except Exception as e:
             print(f"Error setting up scheduled job: {e}")
 
