@@ -36,7 +36,7 @@ jobs:
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            --tag ghcr.io/${REPO_OWNER}/scryfall:${{ github.sha }} \
+            --tag ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }} \
             --push .
 
   publish-main:
@@ -55,9 +55,9 @@ jobs:
       - name: Pull and tag Docker image with latest tag
         run: |
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          docker pull ghcr.io/${REPO_OWNER}/scryfall:${{ github.sha }}
-          docker tag ghcr.io/${REPO_OWNER}/scryfall:${{ github.sha }} ghcr.io/${REPO_OWNER}/scryfall:latest
-          docker push ghcr.io/${REPO_OWNER}/scryfall:latest
+          docker pull ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }}
+          docker tag ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }} ghcr.io/${REPO_OWNER}/random-mtg-bot:latest
+          docker push ghcr.io/${REPO_OWNER}/random-mtg-bot:latest
 
   publish-branch:
     needs: build
@@ -76,6 +76,6 @@ jobs:
         run: |
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]')
-          docker pull ghcr.io/${REPO_OWNER}/scryfall:${{ github.sha }}
-          docker tag ghcr.io/${REPO_OWNER}/scryfall:${{ github.sha }} ghcr.io/${REPO_OWNER}/scryfall:${BRANCH_NAME}
-          docker push ghcr.io/${REPO_OWNER}/scryfall:${BRANCH_NAME}
+          docker pull ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }}
+          docker tag ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }} ghcr.io/${REPO_OWNER}/random-mtg-bot:${BRANCH_NAME}
+          docker push ghcr.io/${REPO_OWNER}/random-mtg-bot:${BRANCH_NAME}
