@@ -1,0 +1,81 @@
+name: Build and Publish Docker Container
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        id: build
+        run: |
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }} \
+            --push .
+
+  publish-main:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and tag Docker image with latest tag
+        run: |
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker pull ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }}
+          docker tag ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }} ghcr.io/${REPO_OWNER}/random-mtg-bot:latest
+          docker push ghcr.io/${REPO_OWNER}/random-mtg-bot:latest
+
+  publish-branch:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/main'
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and tag Docker image with branch name tag
+        run: |
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]')
+          docker pull ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }}
+          docker tag ghcr.io/${REPO_OWNER}/random-mtg-bot:${{ github.sha }} ghcr.io/${REPO_OWNER}/random-mtg-bot:${BRANCH_NAME}
+          docker push ghcr.io/${REPO_OWNER}/random-mtg-bot:${BRANCH_NAME}
