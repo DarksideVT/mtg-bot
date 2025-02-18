@@ -69,7 +69,12 @@ def get_random_card():
 
 
 # Slash command to fetch a random MTG card
-@bot.command(
+@bot.slash_command(
+    # This command can be used by guild members, but also by users anywhere if they install it
+    integration_types={
+        discord.IntegrationType.guild_install,
+        discord.IntegrationType.user_install,
+    },
     description="Fetch a random Magic: The Gathering card from Scryfall.",
     name="random-mtg-card",
 )
