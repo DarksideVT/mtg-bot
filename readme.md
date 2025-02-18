@@ -24,3 +24,7 @@
 
 # Recommendations
 I'd recommend using Docker as it's easier to setup and run the application. If you're familiar with Python, you can use the local setup instead. This is a simple application and doesn't require much setup. It should really only be used on a single guild as it doesn't have any database support.
+
+# Features
+- Can optionally set a automated message to be sent at a specific time to a specific channel (Ommit the variables for CHANNEL_ID and CRON_SCHEDULE to disable this feature)
+- Handles double sided cards and posts both images
