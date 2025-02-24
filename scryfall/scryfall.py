@@ -1,13 +1,19 @@
 import re
 import aiohttp
+import asyncio
+import time
+from typing import Optional
 
 
 class ScryfallAPI:
     BASE_URL = "https://api.scryfall.com"
     _session = None
+    _semaphore = asyncio.Semaphore(10)  # Max 10 concurrent requests
+    _last_request_time = 0
+    _min_delay = 0.1  # 100ms between requests (10 per second)
 
     @classmethod
-    async def get_session(cls):
+    async def get_session(cls) -> aiohttp.ClientSession:
         """Get or create aiohttp ClientSession"""
         if cls._session is None:
             cls._session = aiohttp.ClientSession()
@@ -21,20 +27,31 @@ class ScryfallAPI:
             cls._session = None
 
     @classmethod
-    async def _get_card_named(cls, card_name: str) -> dict:
-        """Base method to fetch a card by name"""
-        session = await cls.get_session()
-        url = f"{cls.BASE_URL}/cards/named?fuzzy={card_name}"
-        async with session.get(url) as response:
-            return await response.json() if response.status == 200 else None
+    async def _rate_limited_request(cls, url: str) -> Optional[dict]:
+        """Make a rate-limited request to Scryfall"""
+        # Ensure minimum delay between requests
+        current_time = time.time()
+        time_since_last = current_time - cls._last_request_time
+        if time_since_last < cls._min_delay:
+            await asyncio.sleep(cls._min_delay - time_since_last)
+
+        async with cls._semaphore:
+            session = await cls.get_session()
+            cls._last_request_time = time.time()
+            async with session.get(url) as response:
+                return await response.json() if response.status == 200 else None
 
     @classmethod
-    async def _get_card_random(cls) -> dict:
+    async def _get_card_named(cls, card_name: str) -> Optional[dict]:
+        """Base method to fetch a card by name"""
+        url = f"{cls.BASE_URL}/cards/named?fuzzy={card_name}"
+        return await cls._rate_limited_request(url)
+
+    @classmethod
+    async def _get_card_random(cls) -> Optional[dict]:
         """Base method to fetch a random card"""
-        session = await cls.get_session()
         url = f"{cls.BASE_URL}/cards/random"
-        async with session.get(url) as response:
-            return await response.json() if response.status == 200 else None
+        return await cls._rate_limited_request(url)
 
     @staticmethod
     def _get_card_images(data: dict) -> list:
@@ -67,28 +84,26 @@ class ScryfallAPI:
         }
 
     @classmethod
-    async def get_rulings(cls, card_name: str):
+    async def get_rulings(cls, card_name: str) -> Optional[dict]:
         data = await cls._get_card_named(card_name)
         if not data:
             return None
 
         rulings_uri = data.get("rulings_uri")
         if rulings_uri:
-            session = await cls.get_session()
-            async with session.get(rulings_uri) as response:
-                if response.status == 200:
-                    rulings_data = await response.json()
-                    return {
-                        "name": data.get("name"),
-                        "scryfall_uri": data.get("scryfall_uri"),
-                        "rulings": [
-                            {
-                                "date": ruling["published_at"],
-                                "text": ruling["comment"],
-                            }
-                            for ruling in rulings_data["data"]
-                        ],
-                    }
+            rulings_data = await cls._rate_limited_request(rulings_uri)
+            if rulings_data:
+                return {
+                    "name": data.get("name"),
+                    "scryfall_uri": data.get("scryfall_uri"),
+                    "rulings": [
+                        {
+                            "date": ruling["published_at"],
+                            "text": ruling["comment"],
+                        }
+                        for ruling in rulings_data["data"]
+                    ],
+                }
         return None
 
     @classmethod
@@ -113,29 +128,27 @@ class ScryfallAPI:
         return None
 
     @classmethod
-    async def get_price(cls, card_name: str):
+    async def get_price(cls, card_name: str) -> Optional[dict]:
         data = await cls._get_card_named(card_name)
         if not data:
             return None
 
         print_search = data.get("prints_search_uri")
         if print_search:
-            session = await cls.get_session()
-            async with session.get(print_search) as response:
-                if response.status == 200:
-                    print_data = await response.json()
-                    return {
-                        "name": data.get("name"),
-                        "scryfall_uri": data.get("scryfall_uri"),
-                        "prices": [
-                            {
-                                "set_name": print["set_name"],
-                                "price": print["prices"]["usd"],
-                            }
-                            for print in print_data["data"]
-                            if print["prices"]["usd"]
-                        ],
-                    }
+            print_data = await cls._rate_limited_request(print_search)
+            if print_data:
+                return {
+                    "name": data.get("name"),
+                    "scryfall_uri": data.get("scryfall_uri"),
+                    "prices": [
+                        {
+                            "set_name": print["set_name"],
+                            "price": print["prices"]["usd"],
+                        }
+                        for print in print_data["data"]
+                        if print["prices"]["usd"]
+                    ],
+                }
         return None
 
     @classmethod
