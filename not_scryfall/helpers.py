@@ -35,7 +35,7 @@ class Helper:
         return oracle_text
 
     def _create_embed(self, title, url, content=None, image_url=None):
-        embed = discord.Embed(title=title, url=url, color=0x1F75FE)
+        embed = discord.Embed(title=title, url=url)
         if content:
             embed.add_field(name="", value=content, inline=False)
         if image_url:

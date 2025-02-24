@@ -132,8 +132,7 @@ class SlashCommand:
         async def help(ctx):
             embed = discord.Embed(
                 title="Scryfall Bot Help",
-                description="Here are the available commands for the Scryfall Bot.",
-                color=0x1F75FE
+                description=f"Here are the available commands for the {self.bot.user.display_name} bot."
             )
 
             if os.getenv("ENABLE_RANDOM_COMMAND", "true").lower() == "true":
@@ -178,4 +177,4 @@ class SlashCommand:
                     inline=False,
                 )
 
-            await ctx.respond(embed=embed)
+            await ctx.respond(embed=embed, ephemeral=True)

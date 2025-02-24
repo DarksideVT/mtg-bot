@@ -95,8 +95,7 @@ class ScryfallBot:
 
         embed = discord.Embed(
             title=card["name"],
-            url=card["scryfall_uri"],
-            color=0x1F75FE
+            url=card["scryfall_uri"]
         )
         if card["images"]:
             embed.set_image(url=card["images"][0])
