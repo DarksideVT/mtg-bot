@@ -20,10 +20,12 @@ class ScryfallBot:
         # Initialize bot
         if self.test_guild_id:
             print(f"Running in test mode with guild ID {self.test_guild_id}")
-            self.bot = discord.Bot(
-                intents=intents, debug_guild=int(self.test_guild_id))
+            self.bot = discord.AutoShardedBot(
+                intents=intents, debug_guild=int(self.test_guild_id), )
         else:
             self.bot = discord.AutoShardedBot(intents=intents)
+        self.bot.default_command_integration_types = {
+            discord.IntegrationType.guild_install, discord.IntegrationType.user_install}
 
         # Initialize scheduler
         self.scheduler = AsyncIOScheduler()

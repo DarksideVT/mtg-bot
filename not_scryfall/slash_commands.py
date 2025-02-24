@@ -5,7 +5,7 @@ from .helpers import Helper
 
 class SlashCommand:
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: discord.AutoShardedBot = bot
         self.card_lookup = Helper(bot)
         self.register_commands()
 
@@ -45,7 +45,7 @@ class SlashCommand:
 
         @self.bot.command(
             description="Fetch a specific Magic: The Gathering card from Scryfall.",
-            name="card-info",
+            name="card-info"
         )
         async def card(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
             embed = await self.card_lookup.get_card_embed(card_name)
@@ -62,7 +62,7 @@ class SlashCommand:
 
         @self.bot.command(
             description="Fetch a specific Magic: The Gathering card's image from Scryfall.",
-            name="image",
+            name="image"
         )
         async def image(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
             embeds = await self.card_lookup.get_image_embed(card_name)
@@ -81,7 +81,7 @@ class SlashCommand:
 
         @self.bot.command(
             description="Fetch a specific Magic: The Gathering card's price from Scryfall.",
-            name="price",
+            name="price"
         )
         async def price(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
             card = await self.card_lookup.get_price_embed(card_name)
