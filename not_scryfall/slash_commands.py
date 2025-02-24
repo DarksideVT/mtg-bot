@@ -1,0 +1,124 @@
+import os
+import discord
+from .helpers import Helper
+
+
+class SlashCommand:
+    def __init__(self, bot):
+        self.bot = bot
+        self.card_lookup = Helper(bot)
+        self.register_commands()
+
+    def register_commands(self):
+        self._register_random_command()
+        self._register_card_command()
+        self._register_image_command()
+        self._register_price_command()
+        self._register_rulings_command()
+        self._register_legality_command()
+
+    def _register_random_command(self):
+        if os.getenv("ENABLE_RANDOM_COMMAND", "true").lower() != "true":
+            print("ENABLE_RANDOM_COMMAND!=true. Random Card slash command DISABLED.")
+            return
+        print("ENABLE_RANDOM_COMMAND=true. Random Card slash command ENABLED.")
+
+        @self.bot.command(
+            description="Fetch a random Magic: The Gathering card from Scryfall.",
+            name="random-card"
+        )
+        async def random_card(ctx):
+            embeds = await self.card_lookup.get_image_embed("random")
+            if not embeds:
+                await ctx.respond("Could not fetch a card at the moment. Please try again later.")
+                return
+            await ctx.respond(embed=embeds[0])
+            if len(embeds) > 1:
+                await ctx.respond(embed=embeds[1])
+
+    def _register_card_command(self):
+        if os.getenv("ENABLE_CARD_INFO_COMMAND", "true").lower() != "true":
+            print("ENABLE_CARD_INFO_COMMAND!=true. Card Info slash command DISABLED.")
+            return
+        print("ENABLE_CARD_INFO_COMMAND=true. Card Info slash command ENABLED.")
+
+        @self.bot.command(
+            description="Fetch a specific Magic: The Gathering card from Scryfall.",
+            name="card-info",
+        )
+        async def card(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
+            embed = await self.card_lookup.get_card_embed(card_name)
+            if not embed:
+                await ctx.respond("Could not fetch a card at the moment. Please try again later.")
+                return
+            await ctx.respond(embed=embed)
+
+    def _register_image_command(self):
+        if os.getenv("ENABLE_IMAGE_COMMAND", "true").lower() != "true":
+            print("ENABLE_IMAGE_COMMAND!=true. Image slash command DISABLED.")
+            return
+        print("ENABLE_IMAGE_COMMAND=true. Image slash command ENABLED.")
+
+        @self.bot.command(
+            description="Fetch a specific Magic: The Gathering card's image from Scryfall.",
+            name="image",
+        )
+        async def image(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
+            embeds = await self.card_lookup.get_image_embed(card_name)
+            if not embeds:
+                await ctx.respond("Could not fetch a card at the moment. Please try again later.")
+                return
+            await ctx.respond(embed=embeds[0])
+            if len(embeds) > 1:
+                await ctx.respond(embed=embeds[1])
+
+    def _register_price_command(self):
+        if os.getenv("ENABLE_PRICE_COMMAND", "true").lower() != "true":
+            print("ENABLE_PRICE_COMMAND!=true. Price slash command DISABLED.")
+            return
+        print("ENABLE_PRICE_COMMAND=true. Price slash command ENABLED.")
+
+        @self.bot.command(
+            description="Fetch a specific Magic: The Gathering card's price from Scryfall.",
+            name="price",
+        )
+        async def price(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
+            card = await self.card_lookup.get_price_embed(card_name)
+            if not card:
+                await ctx.respond("Could not fetch a card at the moment. Please try again later.")
+                return
+            await ctx.respond(embed=card)
+
+    def _register_rulings_command(self):
+        if os.getenv("ENABLE_RULINGS_COMMAND", "true").lower() != "true":
+            print("ENABLE_RULINGS_COMMAND!=true. Rulings slash command DISABLED.")
+            return
+        print("ENABLE_RULINGS_COMMAND=true. Rulings slash command ENABLED.")
+
+        @self.bot.command(
+            description="Fetch a specific Magic: The Gathering card's rulings from Scryfall.",
+            name="rulings"
+        )
+        async def rulings(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
+            card = await self.card_lookup.get_rulings_embed(card_name)
+            if not card:
+                await ctx.respond("Could not fetch a card at the moment. Please try again later.")
+                return
+            await ctx.respond(embed=card)
+
+    def _register_legality_command(self):
+        if os.getenv("ENABLE_LEGALITY_COMMAND", "true").lower() != "true":
+            print("ENABLE_LEGALITY_COMMAND!=true. Legality slash command DISABLED.")
+            return
+        print("ENABLE_LEGALITY_COMMAND=true. Legality slash command ENABLED.")
+
+        @self.bot.command(
+            description="Fetch a specific Magic: The Gathering card's legality from Scryfall.",
+            name="legality"
+        )
+        async def legality(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
+            card = await self.card_lookup.get_legality_embed(card_name)
+            if not card:
+                await ctx.respond("Could not fetch a card at the moment. Please try again later.")
+                return
+            await ctx.respond(embed=card)

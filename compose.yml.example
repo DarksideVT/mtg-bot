@@ -4,8 +4,18 @@ services:
     build: .
     container_name: scryfall
     environment:
+      # Required variables
       - BOT_TOKEN=<your_bot_token> # The bot token from Discord
-      - CRON_SCHEDULE=03 0 * * * # Run the bot every day at 12:03 AM for example. Use https://crontab.guru/ to generate your own schedule.
-      - CHANNEL_ID=782393564211733791 # The channel ID where the bot will post the daily card
-      - TZ=America/New_York # Set the timezone
+      
+      # Optional variables with defaults
+      - CHANNEL_ID=782393564211733791 # Optional - The channel ID where the bot will post the daily card
+      - CRON_SCHEDULE=03 0 * * * # Optional - Run at 12:03 AM daily
+      - TZ=America/New_York # Optional - Set the timezone
+      - ENABLE_RANDOM_COMMAND=true # Optional - Enable/disable the /random-card command
+      - ENABLE_CARD_INFO_COMMAND=true # Optional - Enable/disable the /card-info command
+      - ENABLE_IMAGE_COMMAND=true # Optional - Enable/disable the /image command
+      - ENABLE_PRICE_COMMAND=true # Optional - Enable/disable the /price command
+      - ENABLE_RULINGS_COMMAND=true # Optional - Enable/disable the /rulings command
+      - ENABLE_LEGALITY_COMMAND=true # Optional - Enable/disable the /legality command
+      - SCRYFALL_LOOKUP=true # Optional - Enable/disable reading user messages for [[]] card lookups.
     tty: true
