@@ -1,6 +1,6 @@
 import re
 import discord
-from scryfall import scryfall
+from scryfall.scryfall import ScryfallAPI
 
 
 class Helper:
@@ -44,7 +44,7 @@ class Helper:
         return embed
 
     async def get_image_embed(self, card_name: str):
-        card = scryfall.get_image(card_name)
+        card = await ScryfallAPI.get_image(card_name)
         if not card:
             return None
 
@@ -64,7 +64,7 @@ class Helper:
         return embeds
 
     async def get_price_embed(self, card_name: str):
-        card = scryfall.get_price(card_name)
+        card = await ScryfallAPI.get_price(card_name)
         if not card:
             return None
 
@@ -78,7 +78,7 @@ class Helper:
         return embed
 
     async def get_rulings_embed(self, card_name: str):
-        card = scryfall.get_rulings(card_name)
+        card = await ScryfallAPI.get_rulings(card_name)
         if not card:
             return None
 
@@ -103,7 +103,7 @@ class Helper:
         return embed
 
     async def get_legality_embed(self, card_name: str):
-        card = scryfall.get_legality(card_name)
+        card = await ScryfallAPI.get_legality(card_name)
         if not card:
             return None
 
@@ -115,7 +115,7 @@ class Helper:
         return embed
 
     async def get_card_embed(self, card_name: str):
-        card = scryfall.get_card(card_name)
+        card = await ScryfallAPI.get_card(card_name)
         if not card:
             return None
 
