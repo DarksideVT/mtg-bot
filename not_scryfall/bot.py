@@ -23,7 +23,7 @@ class ScryfallBot:
             self.bot = discord.Bot(
                 intents=intents, debug_guild=int(self.test_guild_id))
         else:
-            self.bot = discord.Bot(intents=intents)
+            self.bot = discord.AutoShardedBot(intents=intents)
 
         # Initialize scheduler
         self.scheduler = AsyncIOScheduler()
