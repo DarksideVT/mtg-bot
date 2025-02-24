@@ -16,6 +16,7 @@ class SlashCommand:
         self._register_price_command()
         self._register_rulings_command()
         self._register_legality_command()
+        self._register_help_command()
 
     def _register_random_command(self):
         if os.getenv("ENABLE_RANDOM_COMMAND", "true").lower() != "true":
@@ -122,3 +123,59 @@ class SlashCommand:
                 await ctx.respond("Could not fetch a card at the moment. Please try again later.")
                 return
             await ctx.respond(embed=card)
+
+    def _register_help_command(self):
+        @self.bot.command(
+            description="Display help for all available commands.",
+            name="help"
+        )
+        async def help(ctx):
+            embed = discord.Embed(
+                title="Scryfall Bot Help",
+                description="Here are the available commands for the Scryfall Bot.",
+                color=0x1F75FE
+            )
+
+            if os.getenv("ENABLE_RANDOM_COMMAND", "true").lower() == "true":
+                embed.add_field(
+                    name="/random-card",
+                    value="Fetch a random Magic: The Gathering card from Scryfall.",
+                    inline=False,
+                )
+
+            if os.getenv("ENABLE_CARD_INFO_COMMAND", "true").lower() == "true":
+                embed.add_field(
+                    name="/card-info [card-name]",
+                    value="Fetch a specific Magic: The Gathering card from Scryfall.",
+                    inline=False,
+                )
+
+            if os.getenv("ENABLE_IMAGE_COMMAND", "true").lower() == "true":
+                embed.add_field(
+                    name="/image [card-name]",
+                    value="Fetch a specific Magic: The Gathering card's image from Scryfall.",
+                    inline=False,
+                )
+
+            if os.getenv("ENABLE_PRICE_COMMAND", "true").lower() == "true":
+                embed.add_field(
+                    name="/price [card-name]",
+                    value="Fetch a specific Magic: The Gathering card's price from Scryfall.",
+                    inline=False,
+                )
+
+            if os.getenv("ENABLE_RULINGS_COMMAND", "true").lower() == "true":
+                embed.add_field(
+                    name="/rulings [card-name]",
+                    value="Fetch a specific Magic: The Gathering card's rulings from Scryfall.",
+                    inline=False,
+                )
+
+            if os.getenv("ENABLE_LEGALITY_COMMAND", "true").lower() == "true":
+                embed.add_field(
+                    name="/legality [card-name]",
+                    value="Fetch a specific Magic: The Gathering card's legality from Scryfall.",
+                    inline=False,
+                )
+
+            await ctx.respond(embed=embed)

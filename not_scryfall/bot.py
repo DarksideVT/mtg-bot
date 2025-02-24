@@ -37,7 +37,7 @@ class ScryfallBot:
     def _setup_events(self):
         @self.bot.event
         async def on_ready():
-            print("Running")
+            print("Bot started.")
             self.scheduler.start()
             await self._setup_scheduled_posts()
 
