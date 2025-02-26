@@ -1,6 +1,7 @@
 import re
 import discord
 from scryfall.scryfall import ScryfallAPI
+from typing import Optional
 
 
 class Helper:
@@ -127,4 +128,26 @@ class Helper:
             value=await self._format_oracle_text(card['oracle_text']),
             inline=False
         )
+        return embed
+
+    async def get_sets_embed(self, card_name: str) -> Optional[discord.Embed]:
+        card_data = await ScryfallAPI.get_sets(card_name)
+        if not card_data:
+            return None
+
+        embed = discord.Embed(
+            title=f"Sets for {card_data['name']}",
+            url=card_data["scryfall_uri"],
+            color=0x0099ff
+        )
+
+        for set_info in card_data["sets"]:
+            embed.add_field(
+                name=set_info["set_name"],
+                value=f"Set Code: {set_info['set_code'].upper()}\n"
+                f"Collector Number: {set_info['collector_number']}\n"
+                f"Released: {set_info['released_at']}",
+                inline=True
+            )
+
         return embed

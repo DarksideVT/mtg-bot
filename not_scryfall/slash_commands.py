@@ -17,6 +17,7 @@ class SlashCommand:
         self._register_rulings_command()
         self._register_legality_command()
         self._register_help_command()
+        self._register_sets_command()
 
     def _register_random_command(self):
         if os.getenv("ENABLE_RANDOM_COMMAND", "true").lower() != "true":
@@ -154,6 +155,27 @@ class SlashCommand:
                 return
             await ctx.respond(embed=card)
 
+    def _register_sets_command(self):
+        if os.getenv("ENABLE_SETS_COMMAND", "true").lower() != "true":
+            print("ENABLE_SETS_COMMAND!=true. Sets slash command DISABLED.")
+            return
+        print("ENABLE_SETS_COMMAND=true. Sets slash command ENABLED.")
+
+        @self.bot.command(
+            description="Show all sets that contain a specific Magic: The Gathering card.",
+            name="sets"
+        )
+        async def sets(
+            ctx,
+            card_name: str = discord.Option(
+                description="Name of the card", name="card-name")
+        ):
+            embed = await self.card_lookup.get_sets_embed(card_name)
+            if not embed:
+                await ctx.respond("Could not fetch sets at the moment. Please try again later.")
+                return
+            await ctx.respond(embed=embed)
+
     def _register_help_command(self):
         @self.bot.command(
             description="Display help for all available commands.",
@@ -204,6 +226,13 @@ class SlashCommand:
                 embed.add_field(
                     name="/legality [card-name]",
                     value="Fetch a specific Magic: The Gathering card's legality from Scryfall.",
+                    inline=False,
+                )
+
+            if os.getenv("ENABLE_SETS_COMMAND", "true").lower() == "true":
+                embed.add_field(
+                    name="/sets [card-name]",
+                    value="Show all sets that contain a specific Magic: The Gathering card.",
                     inline=False,
                 )
 

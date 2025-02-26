@@ -185,3 +185,28 @@ class ScryfallAPI:
             "type_line": data.get("type_line"),
             "oracle_text": data.get("oracle_text")
         }
+
+    @classmethod
+    async def get_sets(cls, card_name: str) -> Optional[dict]:
+        data = await cls._get_card_named(card_name)
+        if not data:
+            return None
+
+        prints_search_uri = data.get("prints_search_uri")
+        if prints_search_uri:
+            prints_data = await cls._rate_limited_request(prints_search_uri)
+            if prints_data:
+                return {
+                    "name": data.get("name"),
+                    "scryfall_uri": data.get("scryfall_uri"),
+                    "sets": [
+                        {
+                            "set_name": print["set_name"],
+                            "set_code": print["set"],
+                            "collector_number": print["collector_number"],
+                            "released_at": print["released_at"]
+                        }
+                        for print in prints_data["data"]
+                    ]
+                }
+        return None
