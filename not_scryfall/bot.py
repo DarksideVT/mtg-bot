@@ -130,13 +130,3 @@ class ScryfallBot:
 
         self._setup_signal_handlers()
         self.bot.run(bot_token)
-
-
-def run_bot():
-    """Entry point to start the bot"""
-    bot = ScryfallBot()
-    bot.run()
-
-
-if __name__ == "__main__":
-    run_bot()

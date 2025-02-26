@@ -47,8 +47,14 @@ class SlashCommand:
             description="Fetch a specific Magic: The Gathering card from Scryfall.",
             name="card-info"
         )
-        async def card(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
-            embed = await self.card_lookup.get_card_embed(card_name)
+        async def card(
+            ctx,
+            card_name: str = discord.Option(
+                description="Name of the card", name="card-name"),
+            set_code: str = discord.Option(
+                description="Set code (optional)", name="set", required=False)
+        ):
+            embed = await self.card_lookup.get_card_embed(card_name, set_code)
             if not embed:
                 await ctx.respond("Could not fetch a card at the moment. Please try again later.")
                 return
@@ -64,8 +70,14 @@ class SlashCommand:
             description="Fetch a specific Magic: The Gathering card's image from Scryfall.",
             name="image"
         )
-        async def image(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
-            embeds = await self.card_lookup.get_image_embed(card_name)
+        async def image(
+            ctx,
+            card_name: str = discord.Option(
+                description="Name of the card", name="card-name"),
+            set_code: str = discord.Option(
+                description="Set code (optional)", name="set", required=False)
+        ):
+            embeds = await self.card_lookup.get_image_embed(card_name, set_code)
             if not embeds:
                 await ctx.respond("Could not fetch a card at the moment. Please try again later.")
                 return
@@ -83,8 +95,14 @@ class SlashCommand:
             description="Fetch a specific Magic: The Gathering card's price from Scryfall.",
             name="price"
         )
-        async def price(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
-            card = await self.card_lookup.get_price_embed(card_name)
+        async def price(
+            ctx,
+            card_name: str = discord.Option(
+                description="Name of the card", name="card-name"),
+            set_code: str = discord.Option(
+                description="Set code (optional)", name="set", required=False)
+        ):
+            card = await self.card_lookup.get_price_embed(card_name, set_code)
             if not card:
                 await ctx.respond("Could not fetch a card at the moment. Please try again later.")
                 return
@@ -100,8 +118,14 @@ class SlashCommand:
             description="Fetch a specific Magic: The Gathering card's rulings from Scryfall.",
             name="rulings"
         )
-        async def rulings(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
-            card = await self.card_lookup.get_rulings_embed(card_name)
+        async def rulings(
+            ctx,
+            card_name: str = discord.Option(
+                description="Name of the card", name="card-name"),
+            set_code: str = discord.Option(
+                description="Set code (optional)", name="set", required=False)
+        ):
+            card = await self.card_lookup.get_rulings_embed(card_name, set_code)
             if not card:
                 await ctx.respond("Could not fetch a card at the moment. Please try again later.")
                 return
@@ -117,8 +141,14 @@ class SlashCommand:
             description="Fetch a specific Magic: The Gathering card's legality from Scryfall.",
             name="legality"
         )
-        async def legality(ctx, card_name: str = discord.Option(description="Name of the card", name="card-name")):
-            card = await self.card_lookup.get_legality_embed(card_name)
+        async def legality(
+            ctx,
+            card_name: str = discord.Option(
+                description="Name of the card", name="card-name"),
+            set_code: str = discord.Option(
+                description="Set code (optional)", name="set", required=False)
+        ):
+            card = await self.card_lookup.get_legality_embed(card_name, set_code)
             if not card:
                 await ctx.respond("Could not fetch a card at the moment. Please try again later.")
                 return

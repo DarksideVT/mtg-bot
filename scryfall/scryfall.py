@@ -42,9 +42,12 @@ class ScryfallAPI:
                 return await response.json() if response.status == 200 else None
 
     @classmethod
-    async def _get_card_named(cls, card_name: str) -> Optional[dict]:
+    async def _get_card_named(cls, card_name: str, set_code: str = None) -> Optional[dict]:
         """Base method to fetch a card by name"""
-        url = f"{cls.BASE_URL}/cards/named?fuzzy={card_name}"
+        if set_code:
+            url = f"{cls.BASE_URL}/cards/named?fuzzy={card_name}&set={set_code}"
+        else:
+            url = f"{cls.BASE_URL}/cards/named?fuzzy={card_name}"
         return await cls._rate_limited_request(url)
 
     @classmethod
@@ -84,8 +87,8 @@ class ScryfallAPI:
         }
 
     @classmethod
-    async def get_rulings(cls, card_name: str) -> Optional[dict]:
-        data = await cls._get_card_named(card_name)
+    async def get_rulings(cls, card_name: str, set_code: str = None) -> Optional[dict]:
+        data = await cls._get_card_named(card_name, set_code)
         if not data:
             return None
 
@@ -107,8 +110,8 @@ class ScryfallAPI:
         return None
 
     @classmethod
-    async def get_legality(cls, card_name: str):
-        data = await cls._get_card_named(card_name)
+    async def get_legality(cls, card_name: str, set_code: str = None):
+        data = await cls._get_card_named(card_name, set_code)
         if not data:
             return None
 
@@ -128,8 +131,8 @@ class ScryfallAPI:
         return None
 
     @classmethod
-    async def get_price(cls, card_name: str) -> Optional[dict]:
-        data = await cls._get_card_named(card_name)
+    async def get_price(cls, card_name: str, set_code: str = None) -> Optional[dict]:
+        data = await cls._get_card_named(card_name, set_code)
         if not data:
             return None
 
@@ -152,11 +155,11 @@ class ScryfallAPI:
         return None
 
     @classmethod
-    async def get_image(cls, card_name: str):
+    async def get_image(cls, card_name: str, set_code: str = None):
         if card_name == "random":
             data = await cls._get_card_random()
         else:
-            data = await cls._get_card_named(card_name)
+            data = await cls._get_card_named(card_name, set_code)
 
         if not data:
             return None
@@ -168,8 +171,8 @@ class ScryfallAPI:
         }
 
     @classmethod
-    async def get_card(cls, card_name: str):
-        data = await cls._get_card_named(card_name)
+    async def get_card(cls, card_name: str, set_code: str = None):
+        data = await cls._get_card_named(card_name, set_code)
         if not data:
             return None
 

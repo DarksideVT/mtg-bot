@@ -8,53 +8,58 @@ class MessageCommand:
         self.message = message
         self.card_lookup = Helper(bot)
 
-    async def image_lookup(self, card_name: str):
-        embeds = await self.card_lookup.get_image_embed(card_name)
+    async def image_lookup(self, card_name: str, set_code: str = None):
+        embeds = await self.card_lookup.get_image_embed(card_name, set_code)
         if not embeds:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
         for embed in embeds:
             await self.message.reply(embed=embed)
 
-    async def price_lookup(self, card_name: str):
-        embed = await self.card_lookup.get_price_embed(card_name)
+    async def price_lookup(self, card_name: str, set_code: str = None):
+        embed = await self.card_lookup.get_price_embed(card_name, set_code)
         if not embed:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
         await self.message.reply(embed=embed)
 
-    async def rulings_lookup(self, card_name: str):
-        embed = await self.card_lookup.get_rulings_embed(card_name)
+    async def rulings_lookup(self, card_name: str, set_code: str = None):
+        embed = await self.card_lookup.get_rulings_embed(card_name, set_code)
         if not embed:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
         await self.message.reply(embed=embed)
 
-    async def legality_lookup(self, card_name: str):
-        embed = await self.card_lookup.get_legality_embed(card_name)
+    async def legality_lookup(self, card_name: str, set_code: str = None):
+        embed = await self.card_lookup.get_legality_embed(card_name, set_code)
         if not embed:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
         await self.message.reply(embed=embed)
 
-    async def default_lookup(self, card_name: str):
-        embed = await self.card_lookup.get_card_embed(card_name)
+    async def default_lookup(self, card_name: str, set_code: str = None):
+        embed = await self.card_lookup.get_card_embed(card_name, set_code)
         if not embed:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
         await self.message.reply(embed=embed)
 
     async def process_card_name(self, card_name: str):
-        if card_name.startswith("!"):
-            await self.image_lookup(card_name[1:])
-        elif card_name.startswith("$"):
-            await self.price_lookup(card_name[1:])
-        elif card_name.startswith("?"):
-            await self.rulings_lookup(card_name[1:])
-        elif card_name.startswith("#"):
-            await self.legality_lookup(card_name[1:])
+        # Split card name and set code if present
+        card_parts = card_name.split('|')
+        card_base = card_parts[0].strip()
+        set_code = card_parts[1].strip() if len(card_parts) > 1 else None
+
+        if card_base.startswith("!"):
+            await self.image_lookup(card_base[1:], set_code)
+        elif card_base.startswith("$"):
+            await self.price_lookup(card_base[1:], set_code)
+        elif card_base.startswith("?"):
+            await self.rulings_lookup(card_base[1:], set_code)
+        elif card_base.startswith("#"):
+            await self.legality_lookup(card_base[1:], set_code)
         else:
-            await self.default_lookup(card_name)
+            await self.default_lookup(card_base, set_code)
 
     @classmethod
     async def handle_message(cls, message: discord.Message, bot):

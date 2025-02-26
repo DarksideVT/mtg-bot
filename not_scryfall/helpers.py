@@ -43,8 +43,8 @@ class Helper:
         embed.set_footer(text="Data provided by Scryfall")
         return embed
 
-    async def get_image_embed(self, card_name: str):
-        card = await ScryfallAPI.get_image(card_name)
+    async def get_image_embed(self, card_name: str, set_code: str = None):
+        card = await ScryfallAPI.get_image(card_name, set_code)
         if not card:
             return None
 
@@ -63,8 +63,8 @@ class Helper:
                 embeds.append(back_embed)
         return embeds
 
-    async def get_price_embed(self, card_name: str):
-        card = await ScryfallAPI.get_price(card_name)
+    async def get_price_embed(self, card_name: str, set_code: str = None):
+        card = await ScryfallAPI.get_price(card_name, set_code)
         if not card:
             return None
 
@@ -77,8 +77,8 @@ class Helper:
             )
         return embed
 
-    async def get_rulings_embed(self, card_name: str):
-        card = await ScryfallAPI.get_rulings(card_name)
+    async def get_rulings_embed(self, card_name: str, set_code: str = None):
+        card = await ScryfallAPI.get_rulings(card_name, set_code)
         if not card:
             return None
 
@@ -102,8 +102,8 @@ class Helper:
             )
         return embed
 
-    async def get_legality_embed(self, card_name: str):
-        card = await ScryfallAPI.get_legality(card_name)
+    async def get_legality_embed(self, card_name: str, set_code: str = None):
+        card = await ScryfallAPI.get_legality(card_name, set_code)
         if not card:
             return None
 
@@ -114,8 +114,8 @@ class Helper:
                             value=legality["status"], inline=True)
         return embed
 
-    async def get_card_embed(self, card_name: str):
-        card = await ScryfallAPI.get_card(card_name)
+    async def get_card_embed(self, card_name: str, set_code: str = None):
+        card = await ScryfallAPI.get_card(card_name, set_code)
         if not card:
             return None
 
