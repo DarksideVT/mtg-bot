@@ -1,6 +1,50 @@
 import os
 import discord
 from .helpers import Helper
+from discord.ui import Button, View
+from scryfall.scryfall import ScryfallAPI
+
+
+class PaginationView(View):
+    def __init__(self, helper, card, embed_type, timeout=180):
+        super().__init__(timeout=timeout)
+        self.helper = helper
+        self.card = card
+        self.embed_type = embed_type
+        self.current_page = 0
+        self.total_pages = None
+        # Initialize buttons as disabled until setup is complete
+        self.prev_page.disabled = True
+        self.next_page.disabled = True
+
+    async def setup(self):
+        """Initialize the view with the first embed and page count"""
+        embed, self.total_pages = await self.helper.create_paginated_embed(
+            self.card, self.embed_type, 0
+        )
+        self.prev_page.disabled = True
+        self.next_page.disabled = self.total_pages <= 1
+        return embed
+
+    async def update_message(self, interaction: discord.Interaction):
+        embed, self.total_pages = await self.helper.create_paginated_embed(
+            self.card, self.embed_type, self.current_page
+        )
+        self.prev_page.disabled = self.current_page <= 0
+        self.next_page.disabled = self.current_page >= self.total_pages - 1
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
+    async def prev_page(self, button: Button, interaction: discord.Interaction):
+        if self.current_page > 0:
+            self.current_page -= 1
+            await self.update_message(interaction)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
+    async def next_page(self, button: Button, interaction: discord.Interaction):
+        if self.total_pages and self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            await self.update_message(interaction)
 
 
 class SlashCommand:
@@ -119,18 +163,15 @@ class SlashCommand:
             description="Fetch a specific Magic: The Gathering card's rulings from Scryfall.",
             name="rulings"
         )
-        async def rulings(
-            ctx,
-            card_name: str = discord.Option(
-                description="Name of the card", name="card-name"),
-            set_code: str = discord.Option(
-                description="Set code (optional)", name="set", required=False)
-        ):
-            card = await self.card_lookup.get_rulings_embed(card_name, set_code)
+        async def rulings(ctx, card_name: str, set_code: str = None):
+            card = await ScryfallAPI.get_rulings(card_name, set_code)
             if not card:
                 await ctx.respond("Could not fetch a card at the moment. Please try again later.")
                 return
-            await ctx.respond(embed=card)
+
+            view = PaginationView(self.card_lookup, card, "rulings")
+            embed = await view.setup()
+            await ctx.respond(embed=embed, view=view if view.total_pages > 1 else None)
 
     def _register_legality_command(self):
         if os.getenv("ENABLE_LEGALITY_COMMAND", "true").lower() != "true":
@@ -165,16 +206,15 @@ class SlashCommand:
             description="Show all sets that contain a specific Magic: The Gathering card.",
             name="sets"
         )
-        async def sets(
-            ctx,
-            card_name: str = discord.Option(
-                description="Name of the card", name="card-name")
-        ):
-            embed = await self.card_lookup.get_sets_embed(card_name)
-            if not embed:
+        async def sets(ctx, card_name: str):
+            card = await ScryfallAPI.get_sets(card_name)
+            if not card:
                 await ctx.respond("Could not fetch sets at the moment. Please try again later.")
                 return
-            await ctx.respond(embed=embed)
+
+            view = PaginationView(self.card_lookup, card, "sets")
+            embed = await view.setup()
+            await ctx.respond(embed=embed, view=view if view.total_pages > 1 else None)
 
     def _register_help_command(self):
         @self.bot.command(
