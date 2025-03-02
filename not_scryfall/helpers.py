@@ -121,14 +121,54 @@ class Helper:
                                 value=ruling["text"],
                                 inline=False)
 
-        else:
-            # For other embed types, use the existing create_card_embed method
-            embed = await self.create_card_embed(card, embed_type, guild_id)
-            return embed, total_pages
+        elif embed_type == "image":
+            embed.title = card["name"]
+            if "images" in card and card["images"]:
+                embed.set_image(url=card["images"][0])
+            
+        elif embed_type == "price":
+            if "prices" in card and card["prices"]:
+                embed.title = f"Prices for {card['name']}"
+                for price_data in card["prices"]:
+                    embed.add_field(
+                        name=price_data["set_name"],
+                        value=f"${price_data['price']}",
+                        inline=True
+                    )
+            else:
+                embed.title = f"No price data for {card['name']}"
+                embed.description = "This card may not be available for purchase or price data is unavailable."
+                
+        elif embed_type == "legality":
+            if "legalities" in card and card["legalities"]:
+                embed.title = f"Format Legality for {card['name']}"
+                for legality in card["legalities"]:
+                    embed.add_field(
+                        name=legality["format"],
+                        value=legality["status"],
+                        inline=True
+                    )
+            else:
+                embed.title = f"No legality data for {card['name']}"
+                
+        else:  # Default "card" embed type
+            embed.title = card["name"]
+            if "small_image" in card:
+                embed.set_thumbnail(url=card["small_image"])
+            if "type_line" in card:
+                embed.add_field(name="Type", value=card["type_line"], inline=True)
+            if "mana_cost" in card and card["mana_cost"]:
+                mana_cost_formatted = await self._format_mana_cost(card["mana_cost"])
+                embed.add_field(name="Mana Cost", value=mana_cost_formatted, inline=True)
+            if "oracle_text" in card and card["oracle_text"]:
+                oracle_text_formatted = await self._format_oracle_text(card["oracle_text"])
+                embed.add_field(name="Oracle Text", value=oracle_text_formatted, inline=False)
 
         return embed, total_pages
 
     async def create_card_embed(self, card, embed_type="card", guild_id=None):
+        if not card:
+            return None
         embed, _ = await self.create_paginated_embed(card, embed_type, 0, guild_id)
         return embed
 
