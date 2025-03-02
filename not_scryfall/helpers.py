@@ -3,11 +3,13 @@ import discord
 from scryfall.scryfall import ScryfallAPI
 from typing import Optional
 import math
+from database.db import Database
 
 
 class Helper:
     def __init__(self, bot):
         self.bot = bot
+        self.db = Database()
 
     async def _get_emoji_id(self, emoji_name: str):
         emojis = await self.bot.fetch_emojis()
@@ -36,11 +38,21 @@ class Helper:
                     mana_symbol, f"<:mana{symbol}:{emoji_id}>")
         return oracle_text
 
-    async def create_paginated_embed(self, card, embed_type="card", page=0):
+    def _get_guild_embed_color(self, guild_id=None):
+        """Get the appropriate embed color for a guild"""
+        if guild_id:
+            return self.db.get_embed_color(guild_id)
+        return discord.Color.blurple()
+
+    async def create_paginated_embed(self, card, embed_type="card", page=0, guild_id=None):
         if not card:
             return None, None
 
-        embed = discord.Embed(url=card["scryfall_uri"])
+        # Create embed with guild-specific color
+        embed = discord.Embed(
+            url=card["scryfall_uri"],
+            color=self._get_guild_embed_color(guild_id)
+        )
         embed.set_footer(text="Data provided by Scryfall")
         total_pages = 1
 
@@ -111,22 +123,22 @@ class Helper:
 
         else:
             # For other embed types, use the existing create_card_embed method
-            embed = await self.create_card_embed(card, embed_type)
+            embed = await self.create_card_embed(card, embed_type, guild_id)
             return embed, total_pages
 
         return embed, total_pages
 
-    async def create_card_embed(self, card, embed_type="card"):
-        embed, _ = await self.create_paginated_embed(card, embed_type, 0)
+    async def create_card_embed(self, card, embed_type="card", guild_id=None):
+        embed, _ = await self.create_paginated_embed(card, embed_type, 0, guild_id)
         return embed
 
-    async def get_image_embed(self, card_name: str, set_code: str = None):
+    async def get_image_embed(self, card_name: str, set_code: str = None, guild_id=None):
         card = await ScryfallAPI.get_image(card_name, set_code)
         if not card:
             return None
 
         embeds = []
-        embed = await self.create_card_embed(card, "image")
+        embed = await self.create_card_embed(card, "image", guild_id)
         if embed:
             embeds.append(embed)
 
@@ -134,26 +146,26 @@ class Helper:
                 card_back = dict(card)
                 card_back["name"] = f"{card['name']} (Back)"
                 card_back["images"] = [card["images"][1]]
-                back_embed = await self.create_card_embed(card_back, "image")
+                back_embed = await self.create_card_embed(card_back, "image", guild_id)
                 embeds.append(back_embed)
         return embeds
 
-    async def get_price_embed(self, card_name: str, set_code: str = None):
+    async def get_price_embed(self, card_name: str, set_code: str = None, guild_id=None):
         card = await ScryfallAPI.get_price(card_name, set_code)
-        return await self.create_card_embed(card, "price")
+        return await self.create_card_embed(card, "price", guild_id)
 
-    async def get_rulings_embed(self, card_name: str, set_code: str = None):
+    async def get_rulings_embed(self, card_name: str, set_code: str = None, guild_id=None):
         card = await ScryfallAPI.get_rulings(card_name, set_code)
-        return await self.create_card_embed(card, "rulings")
+        return await self.create_card_embed(card, "rulings", guild_id)
 
-    async def get_legality_embed(self, card_name: str, set_code: str = None):
+    async def get_legality_embed(self, card_name: str, set_code: str = None, guild_id=None):
         card = await ScryfallAPI.get_legality(card_name, set_code)
-        return await self.create_card_embed(card, "legality")
+        return await self.create_card_embed(card, "legality", guild_id)
 
-    async def get_card_embed(self, card_name: str, set_code: str = None):
+    async def get_card_embed(self, card_name: str, set_code: str = None, guild_id=None):
         card = await ScryfallAPI.get_card(card_name, set_code)
-        return await self.create_card_embed(card, "card")
+        return await self.create_card_embed(card, "card", guild_id)
 
-    async def get_sets_embed(self, card_name: str) -> Optional[discord.Embed]:
+    async def get_sets_embed(self, card_name: str, guild_id=None) -> Optional[discord.Embed]:
         card_data = await ScryfallAPI.get_sets(card_name)
-        return await self.create_card_embed(card_data, "sets")
+        return await self.create_card_embed(card_data, "sets", guild_id)

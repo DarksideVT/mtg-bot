@@ -6,11 +6,12 @@ from scryfall.scryfall import ScryfallAPI
 
 
 class MessagePaginationView(View):
-    def __init__(self, helper, card, embed_type, timeout=180):
+    def __init__(self, helper, card, embed_type, guild_id=None, timeout=180):
         super().__init__(timeout=timeout)
         self.helper = helper
         self.card = card
         self.embed_type = embed_type
+        self.guild_id = guild_id
         self.current_page = 0
         self.total_pages = None
         # Initialize buttons as disabled until setup is complete
@@ -20,7 +21,7 @@ class MessagePaginationView(View):
     async def setup(self):
         """Initialize the view with the first embed and page count"""
         embed, self.total_pages = await self.helper.create_paginated_embed(
-            self.card, self.embed_type, 0
+            self.card, self.embed_type, 0, self.guild_id
         )
         self.prev_page.disabled = True
         self.next_page.disabled = self.total_pages <= 1
@@ -28,7 +29,7 @@ class MessagePaginationView(View):
 
     async def update_message(self, interaction: discord.Interaction):
         embed, self.total_pages = await self.helper.create_paginated_embed(
-            self.card, self.embed_type, self.current_page
+            self.card, self.embed_type, self.current_page, self.guild_id
         )
         self.prev_page.disabled = self.current_page <= 0
         self.next_page.disabled = self.current_page >= self.total_pages - 1
@@ -51,9 +52,10 @@ class MessageCommand:
     def __init__(self, message: discord.Message, bot):
         self.message = message
         self.card_lookup = Helper(bot)
+        self.guild_id = message.guild.id if message.guild else None
 
     async def image_lookup(self, card_name: str, set_code: str = None):
-        embeds = await self.card_lookup.get_image_embed(card_name, set_code)
+        embeds = await self.card_lookup.get_image_embed(card_name, set_code, self.guild_id)
         if not embeds:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
@@ -61,7 +63,7 @@ class MessageCommand:
             await self.message.reply(embed=embed)
 
     async def price_lookup(self, card_name: str, set_code: str = None):
-        embed = await self.card_lookup.get_price_embed(card_name, set_code)
+        embed = await self.card_lookup.get_price_embed(card_name, set_code, self.guild_id)
         if not embed:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
@@ -73,19 +75,19 @@ class MessageCommand:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
 
-        view = MessagePaginationView(self.card_lookup, card, "rulings")
+        view = MessagePaginationView(self.card_lookup, card, "rulings", self.guild_id)
         embed = await view.setup()
         await self.message.reply(embed=embed, view=view if view.total_pages > 1 else None)
 
     async def legality_lookup(self, card_name: str, set_code: str = None):
-        embed = await self.card_lookup.get_legality_embed(card_name, set_code)
+        embed = await self.card_lookup.get_legality_embed(card_name, set_code, self.guild_id)
         if not embed:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
         await self.message.reply(embed=embed)
 
     async def default_lookup(self, card_name: str, set_code: str = None):
-        embed = await self.card_lookup.get_card_embed(card_name, set_code)
+        embed = await self.card_lookup.get_card_embed(card_name, set_code, self.guild_id)
         if not embed:
             await self.message.reply("Could not fetch a card at the moment. Please try again later.")
             return
@@ -97,7 +99,7 @@ class MessageCommand:
             await self.message.reply("Could not fetch sets at the moment. Please try again later.")
             return
 
-        view = MessagePaginationView(self.card_lookup, card, "sets")
+        view = MessagePaginationView(self.card_lookup, card, "sets", self.guild_id)
         embed = await view.setup()
         await self.message.reply(embed=embed, view=view if view.total_pages > 1 else None)
 
