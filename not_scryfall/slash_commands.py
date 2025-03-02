@@ -7,7 +7,7 @@ from database.db import Database
 
 
 class PaginationView(View):
-    def __init__(self, helper, card, embed_type, guild_id=None, timeout=180):
+    def __init__(self, helper: Helper, card, embed_type, guild_id=None, timeout=180):
         super().__init__(timeout=timeout)
         self.helper = helper
         self.card = card
@@ -233,7 +233,7 @@ class SlashCommand:
             name="settings"
         )
         async def settings(
-            ctx,
+            ctx: discord.Interaction,
             action: str = discord.Option(
                 description="Action to perform",
                 choices=["view", "set"],
@@ -262,19 +262,16 @@ class SlashCommand:
                     title=f"Settings for {ctx.guild.name}",
                     color=self.db.get_embed_color(guild_id)
                 )
-                
-                # Get the current embed color
-                current_color = self.db.get_embed_color(guild_id)
-                hex_color = f"#{current_color.value:06X}"
-                
-                embed.add_field(
-                    name="Embed Color",
-                    value=f"Current color: {hex_color}",
-                    inline=False
-                )
+                # Get all settings for the guild
+                settings = self.db.get_guild_settings(guild_id)
+                if settings:
+                    for key, value in settings.items():
+                        embed.add_field(name=key.replace("_", "-"), value=value, inline=False)
+                else:
+                    embed.description = "No settings found for this server."
                 
                 embed.set_footer(text="Use /settings set to change these settings")
-                await ctx.respond(embed=embed)
+                await ctx.respond(embed=embed, ephemeral=True)
                 return
             
             elif action == "set":
@@ -314,7 +311,7 @@ class SlashCommand:
                             description=f"Embeds will now use this color: `#{value}`",
                             color=new_color
                         )
-                        await ctx.respond(embed=embed)
+                        await ctx.respond(embed=embed, ephemeral=True)
                     else:
                         await ctx.respond("Failed to update embed color. Please try again.", ephemeral=True)
                 else:

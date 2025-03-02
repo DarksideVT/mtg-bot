@@ -8,6 +8,7 @@ from .slash_commands import SlashCommand
 from scryfall.scryfall import ScryfallAPI
 import signal
 import asyncio
+from database.db import Database
 
 
 class ScryfallBot:
@@ -58,7 +59,16 @@ class ScryfallBot:
         """Setup scheduled card posting if configured"""
         cron_schedule = os.getenv("CRON_SCHEDULE", "").strip()
         channel_id = os.getenv("CHANNEL_ID", "").strip()
-
+        
+        # Fetch guild settings from the database
+        db = Database()
+        guild_id = self.test_guild_id if self.test_guild_id else self.bot.guilds[0].id
+        guild_settings = db.get_guild_settings(guild_id)
+        
+        # Use database settings if available, otherwise fallback to environment variables
+        cron_schedule = guild_settings['random_card_schedule'] if guild_settings and guild_settings['random_card_schedule'] else cron_schedule
+        channel_id = guild_settings['random_card_channel_id'] if guild_settings and guild_settings['random_card_channel_id'] else channel_id
+        
         if cron_schedule and channel_id.isdigit():
             try:
                 channel_id = int(channel_id)
@@ -70,8 +80,7 @@ class ScryfallBot:
                 )
                 next_run_time = job.next_run_time
                 if next_run_time:
-                    time_until_next_run = next_run_time - \
-                        datetime.now(next_run_time.tzinfo)
+                    time_until_next_run = next_run_time - datetime.now(next_run_time.tzinfo)
                     formatted_time = str(time_until_next_run).split(".")[0]
                     print(
                         f"Next scheduled card posting set to {next_run_time} "
