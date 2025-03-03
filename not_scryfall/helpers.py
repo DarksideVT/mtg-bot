@@ -4,6 +4,8 @@ from scryfall.scryfall import ScryfallAPI
 from typing import Optional
 import math
 from database.db import Database
+import dateparser
+from datetime import datetime
 
 
 class Helper:
@@ -43,6 +45,66 @@ class Helper:
         if guild_id:
             return self.db.get_embed_color(guild_id)
         return discord.Color.blurple()
+
+    @staticmethod
+    def parse_schedule(schedule_text):
+        """
+        Parse natural language schedule into cron expression
+        
+        Args:
+            schedule_text: Natural language schedule (e.g., "Every day at 5PM")
+        
+        Returns:
+            str: Cron expression or original text if can't be parsed
+        """
+        schedule_text = schedule_text.strip()
+        
+        # Try to identify recurring schedule patterns
+        daily_pattern = re.search(r'(?:every|each)\s+day|daily', schedule_text, re.IGNORECASE)
+        weekly_pattern = re.search(r'(?:every|each)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|mon|tue|wed|thu|fri|sat|sun)', schedule_text, re.IGNORECASE)
+        
+        # Try to parse time using dateparser
+        # Create a reference time string
+        time_ref = "at " + schedule_text.split("at ")[-1] if "at " in schedule_text else schedule_text
+        parsed_time = dateparser.parse(time_ref)
+        
+        if not parsed_time:
+            return schedule_text  # Return original if we can't parse the time
+        
+        # Extract hour and minute
+        hour = parsed_time.hour
+        minute = parsed_time.minute
+        
+        # Determine the schedule type and create appropriate cron expression
+        if daily_pattern:
+            return f"{minute} {hour} * * *"  # Every day at the specified time
+        elif weekly_pattern:
+            # Map weekday names to cron day numbers (0-6, where 0 is Sunday)
+            days_mapping = {
+                'monday': 1, 'mon': 1,
+                'tuesday': 2, 'tue': 2,
+                'wednesday': 3, 'wed': 3,
+                'thursday': 4, 'thu': 4, 
+                'friday': 5, 'fri': 5,
+                'saturday': 6, 'sat': 6,
+                'sunday': 0, 'sun': 0
+            }
+            
+            day_of_week = None
+            for day_name, day_num in days_mapping.items():
+                if re.search(r'\b' + day_name + r'\b', schedule_text, re.IGNORECASE):
+                    day_of_week = day_num
+                    break
+            
+            if day_of_week is not None:
+                return f"{minute} {hour} * * {day_of_week}"  # Every specified weekday at the specified time
+            else:
+                # If no specific day mentioned but "weekly", default to Monday
+                return f"{minute} {hour} * * 1"
+        
+        # Default: if we can parse the time but not the recurrence pattern, assume daily
+        return f"{minute} {hour} * * *"
+
 
     async def create_paginated_embed(self, card, embed_type="card", page=0, guild_id=None):
         if not card:

@@ -53,6 +53,18 @@ class Database:
         
         conn.commit()
         conn.close()
+    
+    def get_all_setting_keys(self):
+        """Get all setting keys"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("PRAGMA table_info(guild_settings)")
+        columns = [info[1] for info in cursor.fetchall()]
+        
+        conn.close()
+        return columns
+    
     def get_guild_settings(self, guild_id):
         """Get the settings for a guild, or return None if not set"""
         conn = sqlite3.connect(self.db_path)
@@ -73,6 +85,27 @@ class Database:
                 'random_card_channel_id': result[2]
             }
         return None
+    def remove_guild_setting(self, guild_id, setting):
+        """Remove a setting for a guild
+        
+        Args:
+            guild_id: The Discord guild ID
+            setting: The setting to remove
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            f'UPDATE guild_settings SET {setting} = NULL WHERE guild_id = ?',
+            (guild_id,)
+        )
+        
+        conn.commit()
+        conn.close()
+        return True
     def get_embed_color(self, guild_id):
         """Get the embed color for a guild, or return default if not set"""
         conn = sqlite3.connect(self.db_path)
