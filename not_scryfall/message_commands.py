@@ -50,9 +50,9 @@ class MessagePaginationView(View):
 
 
 class MessageCommand:
-    # Print if ENABLE_MESSAGE_COMMAND is enabled when this module is imported
-    ENABLE_MESSAGE_COMMAND_enabled = os.getenv("ENABLE_MESSAGE_COMMAND", 'true').lower()
-    print(f"ENABLE_MESSAGE_COMMAND={ENABLE_MESSAGE_COMMAND_enabled}. Bot will respond to message commands.")
+    # Print if ALLOW_READ_MESSAGE is enabled when this module is imported
+    ALLOW_READ_MESSAGE_enabled = os.getenv("ALLOW_READ_MESSAGE", 'true').lower()
+    print(f"ALLOW_READ_MESSAGE={ALLOW_READ_MESSAGE_enabled}. Bot will respond to message commands.")
 
     def __init__(self, message: discord.Message, bot):
         self.message = message

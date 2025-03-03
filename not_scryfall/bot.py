@@ -45,7 +45,7 @@ class ScryfallBot:
         async def on_message(message: discord.Message):
             if message.author == self.bot.user:
                 return
-            if os.getenv("ENABLE_MESSAGE_COMMAND", 'true').lower() == 'true':
+            if os.getenv("ALLOW_READ_MESSAGE", 'true').lower() == 'true':
                 await MessageCommand.handle_message(message, self.bot)
 
         @self.bot.event
