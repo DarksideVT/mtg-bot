@@ -1,6 +1,6 @@
 services:
   scryfall:
-    image: scryfall
+    image: ghcr.io/darksidevt/mtg-bot:latest
     build: .
     container_name: scryfall
     environment:
