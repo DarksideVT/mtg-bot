@@ -38,7 +38,6 @@ class ScryfallBot:
     def _setup_events(self):
         @self.bot.event
         async def on_ready():
-
             self._load_schedules()
             print("Bot started.")
 
@@ -46,7 +45,7 @@ class ScryfallBot:
         async def on_message(message: discord.Message):
             if message.author == self.bot.user:
                 return
-            if os.getenv("SCRYFALL_LOOKUP", 'true').lower() == 'true':
+            if os.getenv("ENABLE_MESSAGE_COMMAND", 'true').lower() == 'true':
                 await MessageCommand.handle_message(message, self.bot)
 
         @self.bot.event

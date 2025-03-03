@@ -1,4 +1,5 @@
 import re
+import os
 import discord
 from .helpers import Helper
 from discord.ui import Button, View
@@ -49,6 +50,10 @@ class MessagePaginationView(View):
 
 
 class MessageCommand:
+    # Print if ENABLE_MESSAGE_COMMAND is enabled when this module is imported
+    ENABLE_MESSAGE_COMMAND_enabled = os.getenv("ENABLE_MESSAGE_COMMAND", 'true').lower()
+    print(f"ENABLE_MESSAGE_COMMAND={ENABLE_MESSAGE_COMMAND_enabled}. Bot will respond to message commands.")
+
     def __init__(self, message: discord.Message, bot):
         self.message = message
         self.card_lookup = Helper(bot)
