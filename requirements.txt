@@ -1,5 +1,4 @@
-discord.py
 croniter
-py-cord[speed] @ git+https://github.com/Pycord-Development/pycord.git
+py-cord[speed]
 aiohttp
 dateparser

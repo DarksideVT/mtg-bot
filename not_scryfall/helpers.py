@@ -5,7 +5,6 @@ from typing import Optional
 import math
 from database.db import Database
 import dateparser
-from datetime import datetime
 
 
 class Helper:

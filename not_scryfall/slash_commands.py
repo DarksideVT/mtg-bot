@@ -1,5 +1,4 @@
 import os
-import re
 import discord
 import discord.bot
 from .helpers import Helper

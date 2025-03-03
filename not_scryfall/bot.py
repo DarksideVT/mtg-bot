@@ -4,8 +4,6 @@ from datetime import datetime
 from .message_commands import MessageCommand
 from .slash_commands import SlashCommand
 from scryfall.scryfall import ScryfallAPI
-import signal
-import asyncio
 from database.db import Database
 from discord.ext import tasks
 import croniter
