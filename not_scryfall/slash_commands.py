@@ -1,15 +1,17 @@
 import os
 import discord
+import discord.bot
 from .helpers import Helper
 from discord.ui import Button, View
 from scryfall.scryfall import ScryfallAPI
 from database.db import Database
 
 
+
 class PaginationView(View):
-    def __init__(self, helper, card, embed_type, guild_id=None, timeout=180):
+    def __init__(self, helper: Helper, card, embed_type, guild_id=None, timeout=180):
         super().__init__(timeout=timeout)
-        self.helper = helper
+        self.helper:Helper = helper
         self.card = card
         self.embed_type = embed_type
         self.guild_id = guild_id
@@ -50,10 +52,11 @@ class PaginationView(View):
 
 
 class SlashCommand:
-    def __init__(self, bot):
-        self.bot: discord.AutoShardedBot = bot
+    def __init__(self, bot, parent_bot=None):
+        self.bot: discord.bot.AutoShardedBot = bot
+        self.parent_bot = parent_bot  # Store reference to the parent ScryfallBot instance
         self.card_lookup = Helper(bot)
-        self.db = Database()
+        self.db: Database = Database()
         self.register_commands()
 
     def register_commands(self):
@@ -233,19 +236,19 @@ class SlashCommand:
             name="settings"
         )
         async def settings(
-            ctx,
+            ctx: discord.Interaction,
             action: str = discord.Option(
                 description="Action to perform",
-                choices=["view", "set"],
+                choices=["view", "set", "remove"],
                 required=True
             ),
             setting: str = discord.Option(
                 description="Setting to change or view",
-                choices=["embed-color"],
+                choices=["embed-color", "random-card-schedule", "random-card-channel-id"],
                 required=False
             ),
             value: str = discord.Option(
-                description="Value to set (use hex color code for embed colors, e.g. 7289DA)",
+                description="Value to set for the setting",
                 required=False
             )
         ):
@@ -262,21 +265,43 @@ class SlashCommand:
                     title=f"Settings for {ctx.guild.name}",
                     color=self.db.get_embed_color(guild_id)
                 )
-                
-                # Get the current embed color
-                current_color = self.db.get_embed_color(guild_id)
-                hex_color = f"#{current_color.value:06X}"
-                
-                embed.add_field(
-                    name="Embed Color",
-                    value=f"Current color: {hex_color}",
-                    inline=False
-                )
-                
+                # Get all settings for the guild
+                settings = self.db.get_guild_settings(guild_id)
+                if not settings:
+                    self.db.set_embed_color(guild_id, str(discord.Color.blurple())[1:])
+                    settings = self.db.get_guild_settings(guild_id)
+                for key, value in settings.items():
+                    if value is not None and key == "random_card_channel_id":
+                        channel = self.bot.get_channel(int(value))
+                        if channel:
+                            value = channel.mention
+                    embed.add_field(name=key.replace("_", "-"), value=value, inline=False)
+                    # Create a default datbase entry for the guild color
                 embed.set_footer(text="Use /settings set to change these settings")
-                await ctx.respond(embed=embed)
+                await ctx.respond(embed=embed, ephemeral=True)
                 return
-            
+            elif action == "remove":
+                # Check for manage guild permissions
+                if not ctx.author.guild_permissions.manage_guild:
+                    await ctx.respond("You need the 'Manage Server' permission to change settings.", ephemeral=True)
+                    return
+                
+                # Check if setting is provided
+                if not setting:
+                    await ctx.respond("Please specify a setting to remove.", ephemeral=True)
+                    return
+                
+                success = self.db.remove_guild_setting(guild_id, setting.replace("-", "_"))
+                if success:
+                    # Get the parent bot instance to reload schedules if necessary
+                    if setting == "random-card-schedule" or setting == "random-card-channel-id":
+                        if self.parent_bot:
+                            self.parent_bot.reload_guild_schedule(guild_id)
+                        
+                    await ctx.respond(f"Setting {setting} removed successfully.", ephemeral=True)
+                else:
+                    await ctx.respond(f"Failed to remove setting {setting}. Please try again.", ephemeral=True)
+                return
             elif action == "set":
                 # Check for manage guild permissions
                 if not ctx.author.guild_permissions.manage_guild:
@@ -314,9 +339,66 @@ class SlashCommand:
                             description=f"Embeds will now use this color: `#{value}`",
                             color=new_color
                         )
-                        await ctx.respond(embed=embed)
+                        await ctx.respond(embed=embed, ephemeral=True)
                     else:
                         await ctx.respond("Failed to update embed color. Please try again.", ephemeral=True)
+                elif setting == "random-card-schedule":
+                    # Try to parse natural language schedule into cron expression
+                    cron_schedule = Helper.parse_schedule(value)
+                    
+                    try:
+                        # Display both the natural language and cron format in the response
+                        self.db.set_random_card_schedule(guild_id, cron_schedule)
+                        embed = discord.Embed(
+                            title="Random Card Schedule Updated",
+                            description=f"Random cards will now be posted on schedule: `{value}`",
+                            color=self.db.get_embed_color(guild_id)
+                        )
+                        
+                        # If the schedule was parsed successfully, show the cron expression
+                        if cron_schedule != value:
+                            embed.description += f"\n\nTranslated to cron expression: `{cron_schedule}`"
+                        
+                        # Load the schedules again
+                        try:
+                            if self.parent_bot:
+                                self.parent_bot.reload_guild_schedule(guild_id)
+                                embed.description += "\n\nSchedule has been reloaded successfully."
+                        except Exception as e:
+                            print(f"Error reloading schedule: {e}")
+                        
+                        await ctx.respond(embed=embed, ephemeral=True)
+                    except Exception as e:
+                        await ctx.respond(f"Invalid schedule format: {e}", ephemeral=True)
+                elif setting == "random-card-channel-id":
+                    # Validate channel ID (Could be a mention or ID)
+                    if value.startswith("<#") and value.endswith(">"):
+                        value = value[2:-1]
+                    if not value.isdigit() :
+                        await ctx.respond("Invalid channel ID. Please provide a valid channel ID.", ephemeral=True)
+                        return
+                    elif not ctx.guild.get_channel(int(value)):
+                        await ctx.respond("Channel not found. Please provide a valid channel ID.", ephemeral=True)
+                        return
+                    # Update the channel ID in the database
+                    success = self.db.set_random_card_channel_id(guild_id, value)
+                    if success:
+                        channel = ctx.guild.get_channel(int(value))
+                        embed = discord.Embed(
+                            title="Random Card Channel Updated",
+                            description=f"Random cards will now be posted in {channel.mention}",
+                            color=self.db.get_embed_color(guild_id)
+                        )
+                        
+                        # Reload the schedule
+                        try:
+                            if self.parent_bot:
+                                self.parent_bot.reload_guild_schedule(guild_id)
+                                embed.description += "\n\nSchedule has been reloaded successfully."
+                        except Exception as e:
+                            print(f"Error reloading schedule: {e}")
+                            
+                        await ctx.respond(embed=embed, ephemeral=True)
                 else:
                     await ctx.respond(f"Unknown setting: {setting}", ephemeral=True)
             else:
@@ -390,7 +472,9 @@ class SlashCommand:
                 value="View or change bot settings for this server.\n" +
                       "Examples:\n" +
                       "- `/settings view` - View all current settings\n" +
-                      "- `/settings set embed-color 7289DA` - Change embed color (requires 'Manage Server' permission)",
+                      "- `/settings set embed-color 7289DA` - Change embed color (requires 'Manage Server' permission)\n" +
+                      "- `/settings set random-card-schedule Every day at 3PM` - Schedule daily random cards\n" +
+                      "- `/settings set random-card-schedule Every Monday at 10:30AM` - Schedule weekly random cards",
                 inline=False
             )
 

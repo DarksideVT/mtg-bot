@@ -1,13 +1,12 @@
 import os
 import discord
 from datetime import datetime
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 from .message_commands import MessageCommand
 from .slash_commands import SlashCommand
 from scryfall.scryfall import ScryfallAPI
-import signal
-import asyncio
+from database.db import Database
+from discord.ext import tasks
+import croniter
 
 
 class ScryfallBot:
@@ -16,7 +15,7 @@ class ScryfallBot:
         self.test_guild_id = os.getenv("TEST_GUILD_ID")
         intents = discord.Intents.default()
         intents.message_content = True
-
+        intents.guilds = True
         # Initialize bot
         if self.test_guild_id:
             print(f"Running in test mode with guild ID {self.test_guild_id}")
@@ -27,59 +26,78 @@ class ScryfallBot:
         self.bot.default_command_integration_types = {
             discord.IntegrationType.guild_install, discord.IntegrationType.user_install}
 
-        # Initialize scheduler
-        self.scheduler = AsyncIOScheduler()
-
         # Setup event handlers
         self._setup_events()
 
-        # Register commands
-        SlashCommand(self.bot)
+        # Register commands - pass the ScryfallBot instance so slash commands can access it
+        SlashCommand(self.bot, self)
+
+        self.schedules = {}
+        self.post_card_task.start()
 
     def _setup_events(self):
         @self.bot.event
         async def on_ready():
+            self._load_schedules()
             print("Bot started.")
-            self.scheduler.start()
-            await self._setup_scheduled_posts()
 
         @self.bot.event
         async def on_message(message: discord.Message):
             if message.author == self.bot.user:
                 return
-            if os.getenv("SCRYFALL_LOOKUP", 'true').lower() == 'true':
+            if os.getenv("ALLOW_READ_MESSAGE", 'true').lower() == 'true':
                 await MessageCommand.handle_message(message, self.bot)
 
         @self.bot.event
         async def on_close():
             await ScryfallAPI.close()
 
-    async def _setup_scheduled_posts(self):
-        """Setup scheduled card posting if configured"""
-        cron_schedule = os.getenv("CRON_SCHEDULE", "").strip()
-        channel_id = os.getenv("CHANNEL_ID", "").strip()
+    def _load_schedules(self):
+        db = Database()
+        for guild in self.bot.guilds:
+            guild_settings = db.get_guild_settings(guild.id)
+            if guild_settings:
+                cron_schedule = guild_settings['random_card_schedule']
+                channel_id = guild_settings['random_card_channel_id']
+                if cron_schedule and channel_id:
+                    self.schedules[guild.id] = (cron_schedule, int(channel_id))
 
-        if cron_schedule and channel_id.isdigit():
-            try:
-                channel_id = int(channel_id)
-                channel = self.bot.get_channel(channel_id)
-                job = self.scheduler.add_job(
-                    self._send_scheduled_card,
-                    CronTrigger.from_crontab(cron_schedule),
-                    args=[channel_id],
-                )
-                next_run_time = job.next_run_time
-                if next_run_time:
-                    time_until_next_run = next_run_time - \
-                        datetime.now(next_run_time.tzinfo)
-                    formatted_time = str(time_until_next_run).split(".")[0]
-                    print(
-                        f"Next scheduled card posting set to {next_run_time} "
-                        f"in {formatted_time} hours.\n"
-                        f"Configured posting channel {channel.name} ({channel.id})."
-                    )
-            except Exception as e:
-                print(f"Error setting up scheduled job: {e}")
+    def reload_guild_schedule(self, guild_id):
+        """Reload the schedule for a specific guild from database"""
+        db = Database()
+        guild_settings = db.get_guild_settings(guild_id)
+        # Remove existing schedule for this guild
+        if guild_id in self.schedules:
+            del self.schedules[guild_id]
+
+        # Add updated schedule if both settings are present
+        if guild_settings:
+            cron_schedule = guild_settings['random_card_schedule']
+            channel_id = guild_settings['random_card_channel_id']
+            if cron_schedule and channel_id:
+                self.schedules[guild_id] = (cron_schedule, int(channel_id))
+            else:
+                self.schedules.pop(guild_id, None)
+        return True
+
+    @tasks.loop(seconds=60)
+    async def post_card_task(self):
+        now = datetime.now()
+        for guild_id, (cron_schedule, channel_id) in self.schedules.items():
+            if self._is_time_to_post(cron_schedule, now):
+                await self._send_scheduled_card(channel_id)
+
+    def _is_time_to_post(self, cron_schedule, now):
+        # Get the previous scheduled run time
+        cron = croniter.croniter(cron_schedule, now)
+        prev_run = cron.get_prev(datetime)
+        # If the difference between now and the previous run is less than 1 minute,
+        # it means we're in the same minute when a post should occur
+        time_since_prev = now - prev_run
+        seconds_since_prev = time_since_prev.total_seconds()
+
+        # With a 60-second check interval, use the same window for posting
+        return seconds_since_prev < 60
 
     async def _send_scheduled_card(self, channel_id: int):
         """Send a random card to the specified channel"""
@@ -102,24 +120,14 @@ class ScryfallBot:
         embed.set_footer(text="Data provided by Scryfall")
 
         await channel.send(embed=embed)
-        print(f"Sent scheduled card to channel {channel_id}")
 
     async def close(self):
         """Cleanup and shutdown"""
         print("Shutting down...")
-        self.scheduler.shutdown()
+        # Removed scheduler shutdown
         await ScryfallAPI.close()
         await self.bot.close()
-
-    def _setup_signal_handlers(self):
-        """Setup graceful shutdown handlers"""
-        def signal_handler(sig, frame):
-            print("Received shutdown signal...")
-            asyncio.get_event_loop().run_until_complete(self.close())
-            exit(0)
-
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
+        self.post_card_task.cancel()
 
     def run(self):
         """Start the bot"""
@@ -127,6 +135,4 @@ class ScryfallBot:
         if not bot_token:
             print("Error: BOT_TOKEN environment variable is empty or not set.")
             exit(1)
-
-        self._setup_signal_handlers()
         self.bot.run(bot_token)

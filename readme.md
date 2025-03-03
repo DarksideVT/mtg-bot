@@ -45,7 +45,7 @@ All command toggle variables default to `true`. Set to `false` to disable specif
 - `ENABLE_PRICE_COMMAND` - Controls the `/price` command
 - `ENABLE_RULINGS_COMMAND` - Controls the `/rulings` command
 - `ENABLE_LEGALITY_COMMAND` - Controls the `/legality` command
-- `SCRYFALL_LOOKUP` - Controls reading reading user messages for card names and looking up the card on Scryfall
+- `ALLOW_READ_MESSAGE` - Controls reading reading user messages for card names and looking up the card on Scryfall
 
 # Features
 - Can optionally set a automated message to be sent at a specific time to a specific channel (Ommit the variables for CHANNEL_ID and CRON_SCHEDULE to disable this feature)

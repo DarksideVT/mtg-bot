@@ -17,5 +17,5 @@ services:
       - ENABLE_PRICE_COMMAND=true # Optional - Enable/disable the /price command
       - ENABLE_RULINGS_COMMAND=true # Optional - Enable/disable the /rulings command
       - ENABLE_LEGALITY_COMMAND=true # Optional - Enable/disable the /legality command
-      - SCRYFALL_LOOKUP=true # Optional - Enable/disable reading user messages for [[]] card lookups.
+      - ALLOW_READ_MESSAGE=true # Optional - Enable/disable reading user messages for [[]] card lookups.
     tty: true

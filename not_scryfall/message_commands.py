@@ -1,4 +1,5 @@
 import re
+import os
 import discord
 from .helpers import Helper
 from discord.ui import Button, View
@@ -49,6 +50,10 @@ class MessagePaginationView(View):
 
 
 class MessageCommand:
+    # Print if ALLOW_READ_MESSAGE is enabled when this module is imported
+    ALLOW_READ_MESSAGE_enabled = os.getenv("ALLOW_READ_MESSAGE", 'true').lower()
+    print(f"ALLOW_READ_MESSAGE={ALLOW_READ_MESSAGE_enabled}. Bot will respond to message commands.")
+
     def __init__(self, message: discord.Message, bot):
         self.message = message
         self.card_lookup = Helper(bot)

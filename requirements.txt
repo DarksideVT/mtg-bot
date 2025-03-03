@@ -1,3 +1,4 @@
-apscheduler
+croniter
 py-cord[speed] @ git+https://github.com/Pycord-Development/pycord.git
 aiohttp
+dateparser
