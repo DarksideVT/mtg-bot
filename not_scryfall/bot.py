@@ -91,11 +91,14 @@ class ScryfallBot:
         # Get the previous scheduled run time
         cron = croniter.croniter(cron_schedule, now)
         prev_run = cron.get_prev(datetime)
+        next_run = cron.get_next(datetime)
         # If the difference between now and the previous run is less than 1 minute,
         # it means we're in the same minute when a post should occur
         time_since_prev = now - prev_run
         seconds_since_prev = time_since_prev.total_seconds()
-
+        print(f"Seconds since previous run: {seconds_since_prev}")
+        print(f"Next run: {next_run}")
+        print(f"Now: {now}")
         # With a 60-second check interval, use the same window for posting
         return seconds_since_prev < 60
 
