@@ -84,6 +84,7 @@ class SearchResultsView(View):
         self.guild_id = guild_id
         self.current_page = search_results["current_page"]
         self.query = None  # Will be set when view is created
+        self.card_count = 0  # Track how many cards we've added
         
         # Initialize navigation buttons as disabled until setup is complete
         self.clear_items()  # Remove any existing buttons
@@ -92,8 +93,16 @@ class SearchResultsView(View):
         """Initialize the view with card buttons and navigation"""
         self.query = query
         
-        # Add card buttons for current page results
-        for card in self.search_results["cards"]:
+        # Maximum number of buttons we can safely add
+        # Discord has a limit of 25 components per message, and we need to reserve some for navigation
+        max_card_buttons = 20
+        
+        # Add card buttons for current page results (limited to max_card_buttons)
+        cards_to_show = self.search_results["cards"][:max_card_buttons]
+        has_more_cards = len(self.search_results["cards"]) > max_card_buttons
+        self.card_count = len(cards_to_show)
+        
+        for card in cards_to_show:
             self.add_item(CardButton(card, self.helper, self.guild_id))
             
         # Add navigation buttons if there's more than one page
@@ -102,7 +111,8 @@ class SearchResultsView(View):
             prev_button = discord.ui.Button(
                 label="Previous Page", 
                 style=discord.ButtonStyle.secondary,
-                disabled=self.current_page <= 1
+                disabled=self.current_page <= 1,
+                row=4  # Put navigation buttons on the bottom row
             )
             prev_button.callback = self.prev_page_callback
             self.add_item(prev_button)
@@ -111,14 +121,15 @@ class SearchResultsView(View):
             next_button = discord.ui.Button(
                 label="Next Page", 
                 style=discord.ButtonStyle.secondary,
-                disabled=not self.search_results["has_more"]
+                disabled=not self.search_results["has_more"],
+                row=4  # Put navigation buttons on the bottom row
             )
             next_button.callback = self.next_page_callback
             self.add_item(next_button)
             
-        return self.create_embed()
+        return self.create_embed(has_more_cards)
         
-    def create_embed(self):
+    def create_embed(self, has_more_cards=False):
         """Create the search results embed"""
         embed = discord.Embed(
             title=f"Search Results for '{self.query}'",
@@ -132,6 +143,14 @@ class SearchResultsView(View):
             value="Click a button below to view detailed information about that card.",
             inline=False
         )
+        
+        # Add a note if we're not showing all cards from this page
+        if has_more_cards:
+            embed.add_field(
+                name="Note",
+                value=f"Showing first {self.card_count} of {len(self.search_results['cards'])} cards on this page due to Discord's button limit.",
+                inline=False
+            )
         
         # Add a thumbnail of the first card if available
         if self.search_results["cards"] and self.search_results["cards"][0].get("thumbnail"):
@@ -370,13 +389,13 @@ class SlashCommand:
         print("ENABLE_SEARCH_COMMAND=true. Search slash command ENABLED.")
 
         @self.bot.command(
-            description="Search for Magic: The Gathering cards on Scryfall.",
+            description="Search for Magic: The Gathering cards on Scryfall. Query help: https://scryfall.com/docs/syntax",
             name="search"
         )
         async def search(
             ctx,
             value: str = discord.Option(
-                description="Search query (e.g., 'ugin' or 'type:planeswalker color:colorless'). Generally follows Scryfall syntax.",
+                description="Search query (e.g., 'ugin' or 'type:planeswalker color:colorless')",
                 name="value"
             )
         ):
@@ -634,7 +653,7 @@ class SlashCommand:
             # Add the search command to help
             embed.add_field(
                 name="/search [value]",
-                value="Search for cards on Scryfall using advanced syntax.\n" +
+                value="Search for cards on Scryfall using advanced syntax. Syntax help: https://scryfall.com/docs/syntax\n" +
                       "Examples:\n" +
                       "- `/search value:ugin` - Search for cards with 'ugin' in the name\n" +
                       "- `/search value:type:planeswalker color:colorless` - Search for colorless planeswalkers",
