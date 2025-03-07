@@ -51,6 +51,138 @@ class PaginationView(View):
             await self.update_message(interaction)
 
 
+class CardButton(discord.ui.Button):
+    def __init__(self, card, helper, guild_id):
+        super().__init__(
+            label=card['name'],
+            style=discord.ButtonStyle.primary,
+            custom_id=f"card_{card['id']}"
+        )
+        self.card = card
+        self.helper = helper
+        self.guild_id = guild_id
+        
+    async def callback(self, interaction: discord.Interaction):
+        # Get the full card details
+        card_data = await ScryfallAPI.get_card(self.card['name'], self.card['set'])
+        if not card_data:
+            await interaction.response.send_message("Could not fetch card details.", ephemeral=True)
+            return
+            
+        # Create an embed with the card details
+        embed = await self.helper.create_card_embed(card_data, "card", self.guild_id)
+        
+        # Send the card as a non-ephemeral message in the channel
+        await interaction.response.send_message(embed=embed)
+
+
+class SearchResultsView(View):
+    def __init__(self, helper: Helper, search_results, guild_id=None, timeout=180):
+        super().__init__(timeout=timeout)
+        self.helper = helper
+        self.search_results = search_results
+        self.guild_id = guild_id
+        self.current_page = search_results["current_page"]
+        self.query = None  # Will be set when view is created
+        
+        # Initialize navigation buttons as disabled until setup is complete
+        self.clear_items()  # Remove any existing buttons
+        
+    async def setup(self, query):
+        """Initialize the view with card buttons and navigation"""
+        self.query = query
+        
+        # Add card buttons for current page results
+        for card in self.search_results["cards"]:
+            self.add_item(CardButton(card, self.helper, self.guild_id))
+            
+        # Add navigation buttons if there's more than one page
+        if self.search_results["has_more"] or self.current_page > 1:
+            # Add previous page button (disabled if on first page)
+            prev_button = discord.ui.Button(
+                label="Previous Page", 
+                style=discord.ButtonStyle.secondary,
+                disabled=self.current_page <= 1
+            )
+            prev_button.callback = self.prev_page_callback
+            self.add_item(prev_button)
+            
+            # Add next page button (disabled if no more pages)
+            next_button = discord.ui.Button(
+                label="Next Page", 
+                style=discord.ButtonStyle.secondary,
+                disabled=not self.search_results["has_more"]
+            )
+            next_button.callback = self.next_page_callback
+            self.add_item(next_button)
+            
+        return self.create_embed()
+        
+    def create_embed(self):
+        """Create the search results embed"""
+        embed = discord.Embed(
+            title=f"Search Results for '{self.query}'",
+            description=f"Found {self.search_results['total_cards']} cards. Page {self.current_page}",
+            color=self.helper._get_guild_embed_color(self.guild_id)
+        )
+        
+        # Add some instructions
+        embed.add_field(
+            name="Instructions",
+            value="Click a button below to view detailed information about that card.",
+            inline=False
+        )
+        
+        # Add a thumbnail of the first card if available
+        if self.search_results["cards"] and self.search_results["cards"][0].get("thumbnail"):
+            embed.set_thumbnail(url=self.search_results["cards"][0]["thumbnail"])
+            
+        # Set footer with pagination info
+        embed.set_footer(text="Data provided by Scryfall")
+        
+        return embed
+        
+    async def prev_page_callback(self, interaction: discord.Interaction):
+        """Handle previous page button click"""
+        # Load previous page of results
+        new_page = self.current_page - 1
+        if new_page < 1:
+            await interaction.response.send_message("Already on the first page!", ephemeral=True)
+            return
+            
+        search_results = await ScryfallAPI.search_cards(self.query, new_page)
+        if not search_results:
+            await interaction.response.send_message("Failed to load previous page.", ephemeral=True)
+            return
+            
+        # Create a new view with the previous page results
+        new_view = SearchResultsView(self.helper, search_results, self.guild_id)
+        embed = await new_view.setup(self.query)
+        
+        # Update the message with the new view
+        await interaction.response.edit_message(embed=embed, view=new_view)
+        
+    async def next_page_callback(self, interaction: discord.Interaction):
+        """Handle next page button click"""
+        # Load next page of results
+        if not self.search_results["has_more"]:
+            await interaction.response.send_message("No more pages available!", ephemeral=True)
+            return
+            
+        next_page = self.search_results["next_page"]
+        search_results = await ScryfallAPI.search_cards(self.query, next_page)
+        if not search_results:
+            await interaction.response.send_message("Failed to load next page.", ephemeral=True)
+            return
+            
+        # Create a new view with the next page results
+        new_view = SearchResultsView(self.helper, search_results, self.guild_id)
+        embed = await new_view.setup(self.query)
+        
+        # Update the message with the new view
+        await interaction.response.edit_message(embed=embed, view=new_view)
+
+
 class SlashCommand:
     def __init__(self, bot, parent_bot=None):
         self.bot: discord.bot.AutoShardedBot = bot
@@ -69,6 +201,7 @@ class SlashCommand:
         self._register_help_command()
         self._register_sets_command()
         self._register_settings_command()
+        self._register_search_command()
 
     def _register_random_command(self):
         if os.getenv("ENABLE_RANDOM_COMMAND", "true").lower() != "true":
@@ -229,6 +362,38 @@ class SlashCommand:
             view = PaginationView(self.card_lookup, card, "sets", guild_id)
             embed = await view.setup()
             await ctx.respond(embed=embed, view=view if view.total_pages > 1 else None)
+            
+    def _register_search_command(self):
+        if os.getenv("ENABLE_SEARCH_COMMAND", "true").lower() != "true":
+            print("ENABLE_SEARCH_COMMAND!=true. Search slash command DISABLED.")
+            return
+        print("ENABLE_SEARCH_COMMAND=true. Search slash command ENABLED.")
+
+        @self.bot.command(
+            description="Search for Magic: The Gathering cards on Scryfall.",
+            name="search"
+        )
+        async def search(
+            ctx,
+            value: str = discord.Option(
+                description="Search query (e.g., 'ugin' or 'type:planeswalker color:colorless'). Generally follows Scryfall syntax.",
+                name="value"
+            )
+        ):
+            guild_id = ctx.guild.id if ctx.guild else None
+            # Search for cards with the provided query
+            search_results = await ScryfallAPI.search_cards(value)
+            
+            if not search_results or not search_results.get("cards"):
+                await ctx.respond(f"No results found for '{value}'.", ephemeral=True)
+                return
+                
+            # Create the search results view
+            view = SearchResultsView(self.card_lookup, search_results, guild_id)
+            embed = await view.setup(value)
+            
+            # Send the search results as an ephemeral message
+            await ctx.respond(embed=embed, view=view, ephemeral=True)
 
     def _register_settings_command(self):
         @self.bot.command(
@@ -465,6 +630,16 @@ class SlashCommand:
                     value="Show all sets that contain a specific Magic: The Gathering card.",
                     inline=False,
                 )
+            
+            # Add the search command to help
+            embed.add_field(
+                name="/search [value]",
+                value="Search for cards on Scryfall using advanced syntax.\n" +
+                      "Examples:\n" +
+                      "- `/search value:ugin` - Search for cards with 'ugin' in the name\n" +
+                      "- `/search value:type:planeswalker color:colorless` - Search for colorless planeswalkers",
+                inline=False,
+            )
             
             # Always show settings command with updated description
             embed.add_field(

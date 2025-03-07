@@ -73,6 +73,64 @@ class ScryfallAPI:
         reg = r"\{([^}]+)\}"
         mana_types = re.findall(reg, mana)
         return [f'mana{mana_type.lower()}' for mana_type in mana_types]
+    
+    @classmethod
+    async def search_cards(cls, query: str, page: int = 1) -> Optional[dict]:
+        """
+        Search for cards using the Scryfall search API
+        
+        Args:
+            query: The search query
+            page: Page number (starts at 1)
+        
+        Returns:
+            dict with search results or None if error
+        """
+        # Encode the query for URL
+        encoded_query = query.replace(' ', '+')
+        
+        # Calculate pagination parameters (Scryfall uses 0-based page index)
+        page_size = 10  # Number of results per page
+        page_index = page - 1  # Convert to 0-based indexing
+        
+        url = f"{cls.BASE_URL}/cards/search?q={encoded_query}&page={page_index}&order=name"
+        data = await cls._rate_limited_request(url)
+        
+        if not data:
+            return None
+            
+        # Process and simplify the result data
+        result = {
+            "has_more": data.get("has_more", False),
+            "total_cards": data.get("total_cards", 0),
+            "next_page": page + 1 if data.get("has_more", False) else None,
+            "current_page": page,
+            "cards": []
+        }
+        
+        for card in data.get("data", []):
+            # Extract essential card information
+            card_info = {
+                "id": card.get("id"),
+                "name": card.get("name"),
+                "set_name": card.get("set_name"),
+                "set": card.get("set"),
+                "collector_number": card.get("collector_number"),
+                "rarity": card.get("rarity"),
+                "scryfall_uri": card.get("scryfall_uri")
+            }
+            
+            # Get image if available
+            if "image_uris" in card:
+                card_info["thumbnail"] = card["image_uris"].get("small")
+            elif "card_faces" in card and "image_uris" in card["card_faces"][0]:
+                card_info["thumbnail"] = card["card_faces"][0]["image_uris"].get("small")
+            else:
+                card_info["thumbnail"] = None
+                
+            result["cards"].append(card_info)
+            
+        return result
 
     @classmethod
     async def get_random_card(cls):
